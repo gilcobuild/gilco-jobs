@@ -183,6 +183,28 @@ div.thumb{display:grid;place-items:center;color:var(--muted);font-size:10px}
 .navbtn .sb{display:flex;flex-direction:column;gap:2px;min-width:0}.navbtn .chev{font-size:26px;color:var(--muted)}
 
 
+
+.calnav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.calnav button{min-height:44px;min-width:48px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-weight:600;font-size:16px}.calnav b{margin-left:6px;font-family:var(--f-display);font-size:20px}
+.tray{background:var(--warn-soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}.trayl{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}.trayl .jchip{min-width:180px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:start}
+.cday{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;min-height:140px;min-width:0}
+.cday.today{border-color:var(--accent)}.cdh{font-weight:600;font-size:13px;color:var(--muted)}.cday.today .cdh{color:var(--accent)}.cempty{padding:6px 2px}
+.jchip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;width:100%;min-height:52px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);border-left:5px solid var(--ink);background:var(--bg);color:var(--fg)}
+.jchip .jt{font-weight:600;font-size:14px;line-height:1.25}.jchip .js{font-size:12px;color:var(--muted)}
+.b-me{border-left-color:#d9631e}.b-hs{border-left-color:#2f7d4f}.b-gc{border-left-color:#1f3a56}.b-el{border-left-color:#9a6a00}.b-pl{border-left-color:#3a6fb3}
+.daystrip{display:none;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.daystrip button{display:flex;flex-direction:column;align-items:center;gap:0;min-height:62px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:12px;padding:4px 0}
+.daystrip button b{font-size:20px;font-family:var(--f-display)}.daystrip button i{font-style:normal;font-size:11px;color:var(--accent);font-weight:700;min-height:14px}
+.daystrip button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}.daystrip button[aria-pressed="true"] i{color:var(--surface)}.daystrip button.today:not([aria-pressed="true"]){border-color:var(--accent)}
+.mob .daystrip,.frame .daystrip{display:grid}.mob .cal,.frame .cal{grid-template-columns:minmax(0,1fr)}.mob .cday:not(.sel),.frame .cday:not(.sel){display:none}.mob .cday .cdh{font-size:15px}
+@media (max-width:759px){.daystrip{display:grid}.cal{grid-template-columns:minmax(0,1fr)}.cday:not(.sel){display:none}}
+.dgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;text-align:center}
+.dgrid button{min-height:52px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-weight:600;font-size:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+.dgrid button small{font-size:10px;font-weight:600;color:var(--muted)}.dgrid button.past{opacity:.45}.dgrid button.today{border-color:var(--accent)}
+.dgrid button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}.dgrid button[aria-pressed="true"] small{color:#fff}
+.bigseg{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px}.bigseg button,.crewb button{min-height:52px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-weight:600;font-size:16px}
+.bigseg button[aria-pressed="true"],.crewb button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.crewb{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
 .pv-reb{background:var(--good-soft);color:var(--good);border-radius:10px;padding:8px 10px;font-weight:600;font-size:14px;display:flex;flex-direction:column}.pv-reb span{font-weight:500;font-size:13px}
 .pv-rebrow{color:var(--good)}
 .phbtns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -448,7 +470,7 @@ const $=s=>document.querySelector(s);
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money=n=>(Number(n)||0).toLocaleString("en-US",{style:"currency",currency:"USD"});
 const r2=n=>Math.round((Number(n)||0)*100)/100;
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const addDays=(d,n)=>{const x=new Date(d+"T12:00:00");x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
 const fmtDate=d=>d?new Date(d+(d.length===10?"T12:00:00":"")).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"";
 const byId=(c,id)=>S.data[c].find(x=>x.id===id);
@@ -732,10 +754,12 @@ function vQuotes(){
 function vJobs(){
   const js=S.data.jobs.filter(inBrand);
   if(!js.length)return `<h1>Jobs</h1>${emptyBox("No jobs yet. When a quote is approved, tap Create Job on it.",`<button class="primary" data-new="job">New Job</button>`)}`;
+  const jv=S.jobView||"cal";
   return `<div class="row between"><h1>Jobs</h1><button class="primary" data-new="job">New Job</button></div>
-  <div class="board">${JOB_STAGES.map(st=>{
+  <div class="seg" role="group" aria-label="View"><button data-act="jobview" data-v="cal" aria-pressed="${jv==="cal"}">Calendar</button><button data-act="jobview" data-v="board" aria-pressed="${jv==="board"}">By stage</button></div>
+  ${jv==="cal"?calHtml(js):`<div class="board">${JOB_STAGES.map(st=>{
     const l=js.filter(j=>j.status===st).sort((a,b)=>(a.start||"").localeCompare(b.start||""));
-    return `<div class="col"><h3>${st}<span class="muted num small">${l.length}</span></h3>${l.length?`<div class="list">${l.map(j=>`<button class="card" data-open="job" data-id="${j.id}"><span class="t">${esc(j.title||"Untitled")}</span><span class="s">${esc(clientName(j.clientId))}${j.start?" · "+fmtDate(j.start):""}${j.crew?" · "+esc(j.crew):""}</span><span class="r">${brandTag(j.brand)}</span></button>`).join("")}</div>`:`<div class="muted small">None</div>`}</div>`}).join("")}</div>`;
+    return `<div class="col"><h3>${st}<span class="muted num small">${l.length}</span></h3>${l.length?`<div class="list">${l.map(j=>`<button class="card" data-open="job" data-id="${j.id}"><span class="t">${esc(j.title||"Untitled")}</span><span class="s">${esc(clientName(j.clientId))}${j.start?" · "+fmtDate(j.start):""}${j.crew?" · "+esc(j.crew):""}</span><span class="r">${brandTag(j.brand)}</span></button>`).join("")}</div>`:`<div class="muted small">None</div>`}</div>`}).join("")}</div>`}`;
 }
 function vInvoices(){
   const f=S.filter.invoices;
@@ -1197,6 +1221,7 @@ function renderSheet(){
     const depPct=q?Number(q.depositPct)||0:0;
     h=sheetTop(isNew?"New Job":esc(d.title||"Job"),`<button class="primary small" data-act="save">Save</button>`)+`<div class="sheet-body">
       <div class="seg" role="group" aria-label="Stage">${JOB_STAGES.map(s=>`<button data-act="stage" data-v="${s}" aria-pressed="${d.status===s}">${s}</button>`).join("")}</div>
+      ${isNew?"":`<button class="navbtn" data-act="sched" data-id="${d.id}"><span class="sb"><b>Schedule</b><span class="muted small">${d.start?`${esc(dayLbl(d.start,{weekday:"long",month:"short",day:"numeric"}))} · ${esc(slotName(d.slot))}${Number(d.days)>1?` · ${d.days} days`:""}${d.crew?" · "+esc(d.crew):""}`:"Not on the calendar yet"}</span></span><span class="chev" aria-hidden="true">›</span></button>`}
       <div class="box fields">${fld("Client","clientId",{opts:clientOpts(),full:1})}${fld("Job title","title",{full:1,words:1})}${fld("Start date","start",{type:"date"})}${fld("Crew","crew",{words:1,ph:"Mike's Crew"})}${fld("Job address","address",{full:1,words:1,ph:"Leave blank to use the client's address"})}${fld("Company","brand",{opts:brandOpts})}${fld("Notes for the crew","notes",{full:1,area:1})}</div>
       ${matHtml(d)}${matSuggest(d).length?`<div class="notice"><b>Suggested</b> ${matSuggest(d).map(x=>`<button class="small" data-act="matadd" data-id="${x.id}">+ ${esc(x.label)}</button>`).join(" ")}</div>`:""}
       ${isNew?"":`<div class="box"><h3>Money on this job</h3>
@@ -1283,6 +1308,7 @@ function renderSheet(){
         <div class="full"><button class="danger small" data-act="instrm" data-i="${i}">Remove</button></div></div>`).join("")}
       <div><button data-act="instadd">Add Installer</button></div></div>`;
   }
+  else if(type==="sched"){h=schedHtml(d)}
   else if(type==="rebates"){
     h=sheetTop("Rebates",`<button class="primary small" data-act="rebsave">Save</button>`)+`<div class="sheet-body">
       <p class="muted">Utility rebates shown on the customer's iPad screen when an option meets the minimum SEER2. The highest one that fits is shown. The federal 25C tax credit ended December 31, 2025, so it isn't listed.</p>
@@ -1634,6 +1660,13 @@ async function onAct(act,el){
     if(id){if(!byId("invoices",id))S.data.invoices.push({...inv,id});openSheet("invoice",id);toast("Invoice created")}
     return;
   }
+  if(act==="jobview"){S.jobView=el.dataset.v;render();return}
+  if(act==="calmove"){const v=+el.dataset.v;S.calStart=v?addDays(S.calStart||monday(today()),v):monday(today());S.calDay=v?addDays(S.calDay||today(),v):today();render();return}
+  if(act==="calday"){S.calDay=el.dataset.v;render();return}
+  if(act==="sched"){const j=byId("jobs",el.dataset.id);if(!j)return;S.sheet={type:"sched",isNew:false};S.draft=JSON.parse(JSON.stringify(j));S.confirm=null;renderSheet();$("#sheet").hidden=false;document.body.style.overflow="hidden";$("#sheet").scrollTop=0;return}
+  if(act==="schedpick"){const k=el.dataset.k;d[k]=k==="days"?Number(el.dataset.v):el.dataset.v;const sc=$("#sheet").scrollTop;renderSheet();$("#sheet").scrollTop=sc;return}
+  if(act==="schedclear"){d.start="";d.slot="";d.days=1;if(await save("jobs",d)){closeSheet();render();toast("Taken off the calendar")}return}
+  if(act==="schedsave"){if(!d.start){toast("Pick a day first");return}if(!d.status||d.status==="Done"&&d.start>=today())d.status="Scheduled";if(await save("jobs",d)){S.calStart=monday(d.start);S.calDay=d.start;closeSheet();render();toast(`Scheduled ${dayLbl(d.start,{weekday:"short",month:"short",day:"numeric"})} · ${slotName(d.slot)}`)}return}
   if(act==="openreb"){S.sheet={type:"rebates",isNew:false};S.draft={list:JSON.parse(JSON.stringify(S.rebates))};S.confirm=null;renderSheet();$("#sheet").hidden=false;document.body.style.overflow="hidden";$("#sheet").scrollTop=0;return}
   if(act==="rebadd"){S.draft.list.push({util:"eno",name:"",min:16,amt:0,note:""});renderSheet();return}
   if(act==="rebrm"){S.draft.list.splice(+el.dataset.i,1);renderSheet();return}
@@ -1672,6 +1705,37 @@ async function onAct(act,el){
 }
 
 
+
+
+/* ---------- dispatch calendar ---------- */
+const SLOTS=[["am","Morning"],["pm","Afternoon"],["day","All day"]];
+const slotName=v=>(SLOTS.find(x=>x[0]===v)||SLOTS[2])[1];
+function monday(d){const x=new Date(d+"T12:00:00");const k=(x.getDay()+6)%7;return addDays(d,-k)}
+function dayLbl(d,o){return new Date(d+"T12:00:00").toLocaleDateString("en-US",o||{weekday:"short",month:"numeric",day:"numeric"})}
+function jobDays(j){const n=Math.max(1,Number(j.days)||1);return Array.from({length:n},(_,i)=>addDays(j.start,i))}
+function crewList(){return [...new Set([...(S.installers||[]).map(x=>x.name).filter(Boolean),...S.data.jobs.map(j=>j.crew).filter(Boolean)])]}
+function jobChip(j,d){const i=jobDays(j).indexOf(d),n=jobDays(j).length;return `<button class="jchip b-${esc(j.brand||"")}" data-act="sched" data-id="${j.id}"><span class="jt">${esc(j.title||"Untitled")}</span><span class="js">${esc(slotName(j.slot))}${n>1?` · day ${i+1} of ${n}`:""}${j.crew?" · "+esc(j.crew):""}</span><span class="js">${esc(clientName(j.clientId))}</span></button>`}
+function calHtml(js){
+  const t=today();S.calStart=S.calStart||monday(t);if(!S.calDay)S.calDay=t;
+  const days=Array.from({length:7},(_,i)=>addDays(S.calStart,i));if(!days.includes(S.calDay))S.calDay=days[0];
+  const live=js.filter(j=>j.status!=="Done"||j.start);
+  const on=d=>live.filter(j=>j.start&&jobDays(j).includes(d)).sort((a,b)=>"am pm day".indexOf(a.slot||"day")-"am pm day".indexOf(b.slot||"day"));
+  const un=js.filter(j=>!j.start&&j.status!=="Done");
+  return `<div class="calnav"><button data-act="calmove" data-v="-7" aria-label="Previous week">‹</button><button data-act="calmove" data-v="0">Today</button><button data-act="calmove" data-v="7" aria-label="Next week">›</button><b>${dayLbl(days[0],{month:"short",day:"numeric"})} – ${dayLbl(days[6],{month:"short",day:"numeric"})}</b></div>
+  ${un.length?`<div class="tray"><div class="muted small">Not scheduled yet · tap to schedule</div><div class="trayl">${un.map(j=>`<button class="jchip b-${esc(j.brand||"")}" data-act="sched" data-id="${j.id}"><span class="jt">${esc(j.title||"Untitled")}</span><span class="js">${esc(clientName(j.clientId))}</span></button>`).join("")}</div></div>`:""}
+  <div class="daystrip">${days.map(d=>`<button data-act="calday" data-v="${d}" aria-pressed="${d===S.calDay}" class="${d===t?"today":""}"><span>${dayLbl(d,{weekday:"short"})}</span><b>${dayLbl(d,{day:"numeric"})}</b><i>${on(d).length||""}</i></button>`).join("")}</div>
+  <div class="cal">${days.map(d=>{const l=on(d);return `<div class="cday ${d===S.calDay?"sel":""} ${d===t?"today":""}"><div class="cdh">${dayLbl(d)}</div>${l.map(j=>jobChip(j,d)).join("")||`<div class="muted small cempty">Open</div>`}</div>`}).join("")}</div>`;
+}
+function schedHtml(d){const t=today();const start=monday(t);const ds=Array.from({length:21},(_,i)=>addDays(start,i));const cr=crewList();
+  return `<div class="sheet-top"><div class="in"><button class="link" data-act="close">‹ Back</button><h2 style="flex:1;text-align:center;font-size:18px">Schedule</h2><span><button class="primary small" data-act="schedsave">Save</button></span></div></div><div class="sheet-body">
+  <div class="box"><b>${esc(d.title||"Untitled")}</b><div class="muted small">${esc(clientName(d.clientId))}${d.address?" · "+esc(d.address):""}</div></div>
+  <div class="box"><h3>Day</h3><div class="dgrid">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(x=>`<span class="muted small">${x}</span>`).join("")}${ds.map(x=>`<button data-act="schedpick" data-k="start" data-v="${x}" aria-pressed="${d.start===x}" class="${x<t?"past":""} ${x===t?"today":""}">${dayLbl(x,{day:"numeric"})}${x.slice(8)==="01"||x===ds[0]?`<small>${dayLbl(x,{month:"short"})}</small>`:""}</button>`).join("")}</div>
+    <label class="f" for="sc-date" style="margin-top:10px">Or pick a date<input type="date" id="sc-date" data-sc="start" value="${esc(d.start||"")}"></label></div>
+  <div class="box"><h3>Time</h3><div class="bigseg">${SLOTS.map(([v,n])=>`<button data-act="schedpick" data-k="slot" data-v="${v}" aria-pressed="${(d.slot||"day")===v}">${n}</button>`).join("")}</div>
+    <h3 style="margin-top:14px">How many days</h3><div class="bigseg" style="grid-template-columns:repeat(5,minmax(0,1fr))">${[1,2,3,4,5].map(n=>`<button data-act="schedpick" data-k="days" data-v="${n}" aria-pressed="${(Number(d.days)||1)===n}">${n}</button>`).join("")}</div></div>
+  <div class="box"><h3>Crew</h3>${cr.length?`<div class="crewb">${cr.map(c=>`<button data-act="schedpick" data-k="crew" data-v="${esc(c)}" aria-pressed="${d.crew===c}">${esc(c)}</button>`).join("")}</div>`:""}
+    <label class="f" for="sc-crew" style="margin-top:10px">${cr.length?"Or type a crew":"Crew"}<input id="sc-crew" data-sc="crew" value="${esc(d.crew||"")}" placeholder="Mike's crew" autocapitalize="words"></label></div>
+  <div class="row"><button class="primary" data-act="schedsave">Save Schedule</button><button data-open="job" data-id="${d.id}">Open Job</button>${d.start?`<button data-act="schedclear">Take Off Calendar</button>`:""}</div></div>`}
 
 /* ---------- rebates ---------- */
 const UTILS=[["","None / not sure"],["eno","Entergy New Orleans"],["ell","Entergy Louisiana"],["cleco","Cleco"],["other","Other utility"]];
@@ -1769,7 +1833,8 @@ document.addEventListener("click",e=>{
   if(b.dataset.act){onAct(b.dataset.act,b)}
 });
 document.addEventListener("input",e=>{if(e.target.id==="pv-name"&&S.present)S.present.name=e.target.value});
-document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.photo){addPhotos(t).finally(()=>{t.value=""});return}
+document.addEventListener("input",e=>{const t=e.target;if(t.dataset&&t.dataset.sc&&S.draft)S.draft[t.dataset.sc]=t.value});
+document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.sc==="start"&&S.draft){const sc=$("#sheet").scrollTop;renderSheet();$("#sheet").scrollTop=sc;return}if(t.dataset&&t.dataset.photo){addPhotos(t).finally(()=>{t.value=""});return}
   if(t.dataset&&t.dataset.qb&&S.qb){S.qb[t.dataset.qb]=t.value;renderSheet();return}});
 $("#sheet").addEventListener("change",e=>{const t=e.target,d=S.draft;if(!d||!S.sheet||S.sheet.type!=="item")return;
   let o=null;if(t.dataset.spk==="model")o=subObj();else if(t.dataset.tk==="model")o=d.tiers[+t.dataset.ti];else if(t.dataset.k==="model")o=d;
