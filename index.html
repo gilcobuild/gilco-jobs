@@ -335,7 +335,7 @@ main>.pbg+.pbg{margin-top:-10px}.pbg>summary{list-style:none;cursor:pointer;padd
 <div class="shell" id="shell"><div class="island" aria-hidden="true"></div>
 <div class="top pad"><div class="top-in">
   <div class="logo"><i></i><span>Gilco Jobs</span></div>
-  <button class="link small" id="signout" onclick="gilcoSignOut()" style="margin-left:auto;order:9;white-space:nowrap">Sign out</button>
+  <button class="link small" id="teambtn" onclick="gilcoTeam()" style="margin-left:auto;order:8;white-space:nowrap" hidden>Team</button><button class="link small" id="signout" onclick="gilcoSignOut()" style="order:9;white-space:nowrap">Sign out</button>
   <select id="brandSel" aria-label="Which company">
     <option value="all">All companies</option>
   </select>
@@ -411,7 +411,12 @@ gate.addEventListener("submit",async e=>{if(e.target.id!=="gform")return;e.preve
   catch(x){er.textContent=/Invalid login/i.test(x.message)?"Email or password doesn't match.":/not confirmed/i.test(x.message)?"Confirm your email first — check your inbox.":x.message}finally{btn.disabled=false}});
 let started=false;
 async function start(session){if(started||!session)return;started=true;gate.hidden=true;
-  try{const{data,error}=await sb.rpc("ensure_account");if(error)throw error;ACC=data;await loadAll();ready()}
+  try{const{data,error}=await sb.rpc("ensure_account");if(error)throw error;ACC=data;
+    const a=await sb.rpc("my_access");window.gilcoAccess=a.data||{account:ACC,role:"owner"};
+    if(window.gilcoAccess.role==="tech"){document.documentElement.classList.add("is-tech");window.gilcoTech&&window.gilcoTech.start(window.gilcoAccess);return}
+    await loadAll();ready();
+    if(window.gilcoAccess.role==="owner"){const tb=document.getElementById("teambtn");if(tb)tb.hidden=false}
+    if(location.hash==="#crew")window.gilcoTech.open(window.gilcoAccess)}
   catch(x){started=false;await sb.auth.signOut();mode="in";showGate(x.message||"Couldn't open your account.")}}
 window.gilcoSignOut=async()=>{await sb.auth.signOut();location.reload()};
 let recovering=false;
@@ -1999,4 +2004,90 @@ setTimeout(()=>{if(S.booting){S.booting=false;render()}},1500);
 })();
 </script>
 
+<script>
+/* Gilco Jobs website: crew (tech) phone screen and Team page. Techs never load prices or costs. */
+(function(){
+const sb=window.gilcoSB;const $$=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const loc=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const add=(d,n)=>{const x=new Date(d+"T12:00:00");x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+const lbl=(d,o)=>new Date(d+"T12:00:00").toLocaleDateString("en-US",o);
+const SLOT={am:"Morning",pm:"Afternoon",day:"All day"};
+const css=`#tech{position:fixed;inset:0;z-index:90;background:var(--bg);overflow-y:auto;padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));color:var(--fg);font:15px/1.5 var(--f-body,system-ui)}
+#tech .tt{position:sticky;top:0;z-index:2;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+#tech .tt b{flex:1;font-family:var(--f-display);font-size:20px;text-align:center}#tech .tt button{background:none;border:0;color:var(--ink);font-weight:600;font-size:15px;min-height:44px}
+#tech .tb{max-width:720px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+#tech .strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}#tech .strip button{min-height:62px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);display:flex;flex-direction:column;align-items:center;font-size:12px}
+#tech .strip button b{font-size:20px;font-family:var(--f-display)}#tech .strip button i{font-style:normal;font-size:11px;color:var(--accent);font-weight:700;min-height:14px}#tech .strip button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--surface)}#tech .strip button[aria-pressed=true] i{color:var(--surface)}
+#tech .job{display:flex;flex-direction:column;gap:4px;text-align:left;width:100%;padding:14px 16px;min-height:76px;border-radius:14px;border:1px solid var(--line);border-left:6px solid var(--ink);background:var(--surface);color:var(--fg)}
+#tech .job b{font-size:17px}#tech .job span{color:var(--muted);font-size:14px}
+#tech .box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}#tech h2{font-family:var(--f-display);margin:0;font-size:26px;line-height:1.1}#tech h3{margin:0;font-size:17px}
+#tech .acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#tech .acts a,#tech .acts button,#tech .big{display:flex;align-items:center;justify-content:center;min-height:56px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-weight:700;font-size:16px;text-decoration:none}
+#tech .stat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#tech .stat button{min-height:56px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-weight:700;font-size:15px}#tech .stat button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+#tech .chk{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:56px;padding:8px 4px;border-bottom:1px solid var(--line);cursor:pointer}#tech .chk:last-child{border-bottom:0}#tech .chk input{width:26px;height:26px;accent-color:var(--good)}#tech .chk.on span{text-decoration:line-through;color:var(--muted)}
+#tech .q{font-weight:700;font-variant-numeric:tabular-nums}#tech .muted{color:var(--muted);font-size:13px}#tech textarea{min-height:90px;border-radius:12px;border:1px solid var(--line);padding:10px 12px;font:inherit;background:var(--bg);color:var(--fg)}
+#tech .ph{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#tech .ph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+#tech .pbtn{display:flex;align-items:center;justify-content:center;min-height:56px;border:1px dashed var(--line);border-radius:12px;background:var(--bg);font-weight:700;cursor:pointer}
+#tech .primary{background:var(--accent);border-color:var(--accent);color:#fff}
+#team .row2{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}#team select,#team input{min-height:48px;border-radius:10px;border:1px solid var(--line);padding:0 12px;font-size:16px;background:var(--bg);color:var(--fg);width:100%}
+#team .grid3{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:8px}@media(max-width:600px){#team .grid3{grid-template-columns:minmax(0,1fr)}}`;
+const st=document.createElement("style");st.textContent=css;document.head.appendChild(st);
+const T={jobs:[],day:loc(),open:null,acc:null,busy:false};
+const el=document.createElement("div");el.id="tech";el.hidden=true;document.body.appendChild(el);
+async function load(){const{data,error}=await sb.rpc("tech_jobs",{p_from:add(loc(),-7),p_to:add(loc(),28)});if(error){toastT(error.message);return}T.jobs=data||[];draw()}
+function daysOf(j){return Array.from({length:Math.max(1,Number(j.days)||1)},(_,i)=>add(j.start,i))}
+function onDay(d){return T.jobs.filter(j=>daysOf(j).includes(d))}
+function toastT(m){const t=document.getElementById("toast");if(!t)return;t.textContent=m;t.hidden=false;clearTimeout(toastT.t);toastT.t=setTimeout(()=>t.hidden=true,2400)}
+function top(back,title){return `<div class="tt">${back?`<button data-t="back">‹ Back</button>`:`<button data-t="refresh">Refresh</button>`}<b>${esc(title)}</b>${T.acc.role==="tech"?`<button data-t="out">Sign out</button>`:`<button data-t="close">Office</button>`}</div>`}
+function list(){const t=loc();const ds=Array.from({length:7},(_,i)=>add(t,i));if(!ds.includes(T.day))T.day=t;const js=onDay(T.day);
+  return top(false,T.acc.crew?T.acc.crew:"My jobs")+`<div class="tb"><div class="strip">${ds.map(d=>`<button data-t="day" data-v="${d}" aria-pressed="${d===T.day}"><span>${d===t?"Today":lbl(d,{weekday:"short"})}</span><b>${lbl(d,{day:"numeric"})}</b><i>${onDay(d).length||""}</i></button>`).join("")}</div>
+  <h2>${lbl(T.day,{weekday:"long",month:"short",day:"numeric"})}</h2>
+  ${js.length?js.map(j=>{const i=daysOf(j).indexOf(T.day),n=daysOf(j).length;return `<button class="job" data-t="open" data-v="${esc(j.id)}"><b>${esc(j.title||"Job")}</b><span>${esc(SLOT[j.slot]||"All day")}${n>1?` · day ${i+1} of ${n}`:""} · ${esc(j.status||"Scheduled")}</span><span>${esc(j.client&&j.client.name||"")}${j.address?" · "+esc(j.address):""}</span></button>`}).join(""):`<div class="box"><span class="muted">No jobs on this day.</span></div>`}</div>`}
+function job(j){const mc=j.matCheck||{};const mats=j.materials||[];const tools=j.tools||[];const ph=j.photos||[];const tel=String(j.client&&j.client.phone||"").replace(/[^\d+]/g,"");
+  const groups={};mats.forEach((m,i)=>{const k=m.stock?"Truck stock":"Pick up";(groups[k]=groups[k]||[]).push([m,i])});
+  const done=mats.filter((m,i)=>mc["m"+i]).length;
+  return top(true,j.title||"Job")+`<div class="tb">
+  <div class="box"><h2>${esc(j.title||"Job")}</h2><div>${esc(lbl(j.start,{weekday:"short",month:"short",day:"numeric"}))} · ${esc(SLOT[j.slot]||"All day")}${j.crew?" · "+esc(j.crew):""}</div>
+    <div><b>${esc(j.client&&j.client.name||"")}</b>${j.client&&j.client.phone?` · <span>${esc(j.client.phone)}</span>`:""}</div><div>${esc(j.address||"")}</div>
+    <div class="acts">${j.address?`<a href="https://maps.apple.com/?daddr=${encodeURIComponent(j.address)}" target="_blank" rel="noopener">Directions</a>`:""}${tel?`<a href="tel:${esc(tel)}">Call customer</a>`:""}</div></div>
+  <div class="box"><h3>Job status</h3><div class="stat">${[["In Progress","Started"],["Punch List","Punch list"],["Done","Job done"]].map(([v,n])=>`<button data-t="status" data-v="${v}" aria-pressed="${j.status===v}">${n}</button>`).join("")}</div></div>
+  ${j.notes?`<div class="box"><h3>Notes from the office</h3><div style="white-space:pre-wrap">${esc(j.notes)}</div></div>`:""}
+  <div class="box"><h3>Material list <span class="muted">${mats.length?`${done} of ${mats.length} checked`:""}</span></h3>${mats.length?Object.entries(groups).map(([k,l])=>`<div class="muted" style="font-weight:700;margin-top:4px">${esc(k)}</div>${l.map(([m,i])=>`<label class="chk ${mc["m"+i]?"on":""}" for="tm-${i}"><input type="checkbox" id="tm-${i}" data-chk="m${i}" ${mc["m"+i]?"checked":""}><span>${esc(m.name)}${m.partNo?` <span class="muted">#${esc(m.partNo)}</span>`:""}</span><span class="q">× ${esc(m.qty)}</span></label>`).join("")}`).join(""):`<span class="muted">No material list on this job.</span>`}</div>
+  ${tools.length?`<div class="box"><h3>Tools to bring</h3>${tools.map((t,i)=>`<label class="chk ${mc["t"+i]?"on":""}" for="tt-${i}"><input type="checkbox" id="tt-${i}" data-chk="t${i}" ${mc["t"+i]?"checked":""}><span>${esc(t)}</span><span></span></label>`).join("")}</div>`:""}
+  <div class="box"><h3>Photos</h3><div class="acts"><label class="pbtn" for="tp-b"><input type="file" id="tp-b" accept="image/*" capture="environment" data-tph="Before" multiple hidden>📷 Before</label><label class="pbtn" for="tp-a"><input type="file" id="tp-a" accept="image/*" capture="environment" data-tph="After" multiple hidden>📷 After</label></div>
+    ${ph.length?`<div class="ph">${ph.map(p=>`<a href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.url)}" alt="${esc(p.tag)} photo" loading="lazy"></a>`).join("")}</div>`:""}<div class="muted" id="tpst"></div></div>
+  <div class="box"><h3>Notes for the office</h3><textarea id="tnotes" placeholder="Anything the office should know: extra parts, problems, customer requests">${esc(j.techNotes||"")}</textarea><button class="big primary" data-t="notes">Save Notes</button></div></div>`}
+function draw(){if(el.hidden)return;const j=T.open&&T.jobs.find(x=>x.id===T.open);const sc=el.scrollTop;el.innerHTML=j?job(j):list();el.scrollTop=sc}
+async function upd(id,patch,msg){const{error}=await sb.rpc("tech_update_job",{p_id:id,p_patch:patch});if(error){toastT("Couldn't save: "+error.message);return false}const j=T.jobs.find(x=>x.id===id);if(j)Object.assign(j,patch);draw();if(msg)toastT(msg);return true}
+el.addEventListener("click",async e=>{const b=e.target.closest("[data-t]");if(!b)return;const k=b.dataset.t,j=T.open&&T.jobs.find(x=>x.id===T.open);
+  if(k==="day"){T.day=b.dataset.v;draw();return}if(k==="open"){T.open=b.dataset.v;draw();el.scrollTop=0;return}if(k==="back"){T.open=null;draw();return}
+  if(k==="refresh"){await load();toastT("Up to date");return}if(k==="out"){window.gilcoSignOut();return}if(k==="close"){el.hidden=true;return}
+  if(k==="status"&&j){const p={status:b.dataset.v};if(b.dataset.v==="In Progress"&&!j.arrivedAt)p.arrivedAt=new Date().toISOString();if(b.dataset.v==="Done")p.doneAt=new Date().toISOString();await upd(j.id,p,b.dataset.v==="Done"?"Marked done. Nice work.":"Status saved");return}
+  if(k==="notes"&&j){await upd(j.id,{techNotes:$$("#tnotes").value},"Notes sent to the office");return}});
+el.addEventListener("change",async e=>{const t=e.target,j=T.open&&T.jobs.find(x=>x.id===T.open);if(!j)return;
+  if(t.dataset.chk){const mc={...(j.matCheck||{})};if(t.checked)mc[t.dataset.chk]=true;else delete mc[t.dataset.chk];await upd(j.id,{matCheck:mc});return}
+  if(t.dataset.tph){const files=[...t.files];if(!files.length)return;const s=$$("#tpst");const ph=[...(j.photos||[])];let n=0;
+    for(const f of files){if(s)s.textContent=`Uploading ${n+1} of ${files.length}…`;try{const bm=await createImageBitmap(f);const k=Math.min(1,1600/Math.max(bm.width,bm.height));const c=document.createElement("canvas");c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);c.getContext("2d").drawImage(bm,0,0,c.width,c.height);const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.82));
+      const path=`${T.acc.account}/up/${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}.jpg`;const{error}=await sb.storage.from("files").upload(path,blob,{contentType:"image/jpeg"});if(error)throw error;ph.push({id:path,url:sb.storage.from("files").getPublicUrl(path).data.publicUrl,tag:t.dataset.tph,at:new Date().toISOString()});n++}catch(x){toastT("A photo didn't upload. Try again.")}}
+    t.value="";if(n)await upd(j.id,{photos:ph},`${n} photo${n===1?"":"s"} added`)}});
+window.gilcoTech={async start(acc){T.acc=acc;el.hidden=false;el.innerHTML=`<div class="tb"><div class="box">Loading your jobs…</div></div>`;await load()},open(acc){T.acc=acc;el.hidden=false;load()}};
+/* ---- Team page (owner) ---- */
+window.gilcoTeam=async function(){const acc=window.gilcoAccess;if(!acc||acc.role!=="owner")return;
+  const box=document.createElement("div");box.id="team";box.className="present";document.body.appendChild(box);
+  const crews=()=>{try{return [...new Set([...(S.installers||[]).map(x=>x.name),...S.data.jobs.map(j=>j.crew)].filter(Boolean))]}catch(x){return []}};
+  async function drawT(msg){const{data,error}=await sb.from("invites").select("email,role,crew").order("role");const L=data||[];
+    box.innerHTML=`<div class="pv-top"><button class="link" data-x="close">‹ Back</button><b class="pv-co">Team</b><button class="link" data-x="crew">Crew screen</button></div><div class="pv-body" style="padding-bottom:40px;max-width:760px">
+    <p class="muted" style="margin:0">Add someone's email, pick what they can do, then tell them to open the app and tap <b>First time? Create your login</b>.</p>
+    <div class="box"><h3>Add a person</h3><div class="grid3"><input id="tm-email" type="email" placeholder="name@email.com" autocomplete="off"><select id="tm-role"><option value="tech">Tech (crew screen, no prices)</option><option value="office">Office (everything)</option></select><select id="tm-crew"><option value="">Crew: sees all jobs</option>${crews().map(c=>`<option>${esc(c)}</option>`).join("")}</select></div>
+      <button class="primary" data-x="add" style="min-height:52px">Add Person</button><div class="muted" role="status">${esc(msg||"")}</div></div>
+    <div class="box"><h3>Who has access</h3>${error?`<span class="muted">${esc(error.message)}</span>`:L.map(r=>`<div class="row2"><div><b>${esc(r.email)}</b><div class="muted">${r.role==="owner"?"Owner":r.role==="office"?"Office · sees everything":"Tech · crew screen only"}${r.crew?" · "+esc(r.crew):""}</div></div>${r.role==="owner"?"":`<button class="danger small" data-x="rm" data-v="${esc(r.email)}">Remove</button>`}</div>`).join("")}</div></div>`}
+  box.addEventListener("click",async e=>{const b=e.target.closest("[data-x]");if(!b)return;const k=b.dataset.x;
+    if(k==="close"){box.remove();return}if(k==="crew"){box.remove();window.gilcoTech.open(acc);return}
+    if(k==="add"){const em=$$("#tm-email").value.trim().toLowerCase();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){drawT("Type a full email address.");return}
+      const{error}=await sb.from("invites").upsert({email:em,account_id:acc.account,role:$$("#tm-role").value,crew:$$("#tm-crew").value||null});drawT(error?"Couldn't add: "+error.message:`Added ${em}. Tell them to open gilcobuild.github.io/gilco-jobs and create their login with this email.`);return}
+    if(k==="rm"){if(b.dataset.c!=="1"){b.dataset.c="1";b.textContent="Tap again to remove";return}const{error}=await sb.from("invites").delete().eq("email",b.dataset.v);drawT(error?"Couldn't remove: "+error.message:"Removed. Their login stops working next time they open the app.")}});
+  drawT()};
+})();
+
+</script>
 </body></html>
